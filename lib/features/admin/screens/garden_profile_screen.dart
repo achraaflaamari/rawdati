@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/garden_model.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/garden_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../shared/widgets/main_layout.dart';
@@ -21,6 +22,7 @@ class _GardenProfileScreenState extends State<GardenProfileScreen> {
   final _workingHoursController = TextEditingController();
   
   final _gardenService = GardenService();
+  final _authService = AuthService();
   bool _isLoading = false;
   GardenModel? _currentGarden;
 
@@ -52,10 +54,17 @@ class _GardenProfileScreenState extends State<GardenProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) {
+      NotificationService.showSnackBar('Utilisateur non connecté', isError: true);
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final garden = GardenModel(
         id: _currentGarden?.id ?? const Uuid().v4(),
+        adminId: currentUser.id,
         name: _nameController.text,
         email: _emailController.text,
         phone: _phoneController.text,

@@ -1,5 +1,6 @@
 class GardenModel {
   final String id;
+  final String adminId;
   final String name;
   final String email;
   final String phone;
@@ -8,6 +9,7 @@ class GardenModel {
 
   GardenModel({
     required this.id,
+    required this.adminId,
     required this.name,
     required this.email,
     required this.phone,
@@ -18,6 +20,7 @@ class GardenModel {
   factory GardenModel.fromJson(Map<String, dynamic> json) {
     return GardenModel(
       id: json['id'],
+      adminId: json['admin_id'],
       name: json['name'],
       email: json['email'],
       phone: json['phone'],
@@ -29,6 +32,7 @@ class GardenModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'admin_id': adminId,
       'name': name,
       'email': email,
       'phone': phone,
