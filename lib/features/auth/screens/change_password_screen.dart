@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/models/user_profile.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../parent/screens/parent_navigation_screen.dart';
+import '../../shared/screens/main_navigation_screen.dart';
+import '../../staff/screens/staff_navigation_screen.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -36,22 +40,37 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     try {
       await _authService.updatePassword(_passwordController.text);
       NotificationService.showSnackBar('Mot de passe mis à jour avec succès');
-      // Restart app flow by going back to main.dart logic
+      
       if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (context) => const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
-          ),
-          (route) => false,
-        );
-        // In a real app, you'd trigger a reload of the initial screen logic
+        // Get the updated profile to know where to navigate
+        final user = _authService.currentUser;
+        if (user != null) {
+          final profile = await _authService.getUserProfile(user.id);
+          if (profile != null && mounted) {
+            Widget nextScreen;
+            switch (profile.role) {
+              case UserRole.admin:
+                nextScreen = const MainNavigationScreen();
+                break;
+              case UserRole.staff:
+                nextScreen = const StaffNavigationScreen();
+                break;
+              case UserRole.parent:
+                nextScreen = const ParentNavigationScreen();
+                break;
+            }
+            
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => nextScreen),
+              (route) => false,
+            );
+          }
+        }
       }
     } catch (e) {
       NotificationService.showSnackBar('Erreur: $e', isError: true);
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

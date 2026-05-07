@@ -50,46 +50,27 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
       );
 
-      if (response.user != null) {
-        final profile = await _authService.getUserProfile(response.user!.id);
-
-        if (!mounted) return;
-
-        if (profile != null) {
-          if (profile.isBlocked) {
-            await _authService.signOut();
-            NotificationService.showSnackBar(
-              'Votre compte est bloqué. Veuillez contacter l\'administration.',
-              isError: true,
-            );
-            return;
-          }
-
-          if (profile.mustChangePassword && profile.role != UserRole.admin) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ChangePasswordScreen(),
-              ),
-            );
-          } else {
-            _navigateByRole(profile.role);
-          }
-        } else {
-          NotificationService.showSnackBar('Profil non trouvé', isError: true);
-        }
-      }
+      // If response.user is not null, main.dart will automatically
+      // detect the state change and redirect the user.
+      // We don't need manual navigation here anymore.
+      
     } on AuthException catch (e) {
-      NotificationService.showSnackBar(e.message, isError: true);
-    } catch (e) {
-      NotificationService.showSnackBar(
-        'Une erreur est survenue',
-        isError: true,
-      );
-    } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+        NotificationService.showSnackBar(e.message, isError: true);
       }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        NotificationService.showSnackBar(
+          'Une erreur est survenue lors de la connexion',
+          isError: true,
+        );
+      }
+    } finally {
+      // Don't set _isLoading = false here if successful, 
+      // because main.dart will rebuild the whole app soon.
+      // If we got an error, we already set it to false above.
     }
   }
 

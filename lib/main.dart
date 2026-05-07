@@ -26,36 +26,76 @@ void main() async {
   runApp(const RawdatiApp());
 }
 
-class RawdatiApp extends StatelessWidget {
+class RawdatiApp extends StatefulWidget {
   const RawdatiApp({super.key});
 
-  Future<Widget> _getInitialScreen() async {
-    final authService = AuthService();
-    final user = authService.currentUser;
+  @override
+  State<RawdatiApp> createState() => _RawdatiAppState();
+}
 
-    if (user == null) {
-      return const LoginScreen();
-    }
+class _RawdatiAppState extends State<RawdatiApp> {
+  final AuthService _authService = AuthService();
+  Widget? _initialScreen;
 
-    final profile = await authService.getUserProfile(user.id);
-    if (profile == null) {
-      // If profile fails, sign out to be safe
-      await authService.signOut();
-      return const LoginScreen();
-    }
+  @override
+  void initState() {
+    super.initState();
+    _handleAuthChanges();
+  }
 
-    if (profile.mustChangePassword && profile.role != UserRole.admin) {
-      return const ChangePasswordScreen();
-    }
+  void _handleAuthChanges() {
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+      final AuthChangeEvent event = data.event;
+      final Session? session = data.session;
 
-    switch (profile.role) {
-      case UserRole.admin:
-        return const MainNavigationScreen();
-      case UserRole.staff:
-        return const StaffNavigationScreen();
-      case UserRole.parent:
-        return const ParentNavigationScreen();
-    }
+      if (session == null) {
+        if (mounted) setState(() => _initialScreen = const LoginScreen());
+        return;
+      }
+
+      if (event == AuthChangeEvent.signedIn ||
+          event == AuthChangeEvent.initialSession ||
+          event == AuthChangeEvent.tokenRefreshed ||
+          event == AuthChangeEvent.passwordRecovery) {
+        final profile = await _authService.getUserProfile(session.user.id);
+        if (profile == null) {
+          await _authService.signOut();
+          if (mounted) setState(() => _initialScreen = const LoginScreen());
+          return;
+        }
+
+        if (profile.isBlocked) {
+          await _authService.signOut();
+          NotificationService.showSnackBar(
+            'Votre compte est bloqué. Veuillez contacter l\'administration.',
+            isError: true,
+          );
+          if (mounted) setState(() => _initialScreen = const LoginScreen());
+          return;
+        }
+
+        if (profile.mustChangePassword && profile.role != UserRole.admin) {
+          if (mounted) setState(() => _initialScreen = const ChangePasswordScreen());
+          return;
+        }
+
+        if (mounted) {
+          setState(() {
+            switch (profile.role) {
+              case UserRole.admin:
+                _initialScreen = const MainNavigationScreen();
+                break;
+              case UserRole.staff:
+                _initialScreen = const StaffNavigationScreen();
+                break;
+              case UserRole.parent:
+                _initialScreen = const ParentNavigationScreen();
+                break;
+            }
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -65,20 +105,10 @@ class RawdatiApp extends StatelessWidget {
       scaffoldMessengerKey: NotificationService.messengerKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: FutureBuilder<Widget>(
-        future: _getInitialScreen(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasError) {
-            return const LoginScreen();
-          }
-          return snapshot.data ?? const LoginScreen();
-        },
-      ),
+      home: _initialScreen ??
+          const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          ),
     );
   }
 }
