@@ -8,6 +8,7 @@ import '../../shared/screens/main_navigation_screen.dart';
 import '../../staff/screens/staff_navigation_screen.dart';
 import '../../parent/screens/parent_navigation_screen.dart';
 import 'forgot_password_screen.dart';
+import 'change_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -55,7 +56,25 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
 
         if (profile != null) {
-          _navigateByRole(profile.role);
+          if (profile.isBlocked) {
+            await _authService.signOut();
+            NotificationService.showSnackBar(
+              'Votre compte est bloqué. Veuillez contacter l\'administration.',
+              isError: true,
+            );
+            return;
+          }
+
+          if (profile.mustChangePassword && profile.role != UserRole.admin) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ChangePasswordScreen(),
+              ),
+            );
+          } else {
+            _navigateByRole(profile.role);
+          }
         } else {
           NotificationService.showSnackBar('Profil non trouvé', isError: true);
         }

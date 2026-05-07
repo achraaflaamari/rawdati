@@ -18,11 +18,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   Future<void> _submit() async {
     if (_passwordController.text.length < 6) {
-      NotificationService.showSnackBar('Le mot de passe doit contenir au moins 6 caractères', isError: true);
+      NotificationService.showSnackBar(
+        'Le mot de passe doit contenir au moins 6 caractères',
+        isError: true,
+      );
       return;
     }
     if (_passwordController.text != _confirmPasswordController.text) {
-      NotificationService.showSnackBar('Les mots de passe ne correspondent pas', isError: true);
+      NotificationService.showSnackBar(
+        'Les mots de passe ne correspondent pas',
+        isError: true,
+      );
       return;
     }
 
@@ -33,7 +39,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       // Restart app flow by going back to main.dart logic
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const Scaffold(body: Center(child: CircularProgressIndicator()))),
+          MaterialPageRoute(
+            builder: (context) => const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+          ),
           (route) => false,
         );
         // In a real app, you'd trigger a reload of the initial screen logic
@@ -57,7 +67,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               const SizedBox(height: 40),
               const Text(
                 'Nouveau Mot de Passe',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.primary),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
               ),
               const SizedBox(height: 12),
               const Text(
@@ -67,21 +81,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               const SizedBox(height: 40),
               TextField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Nouveau mot de passe'),
+                decoration: const InputDecoration(
+                  labelText: 'Nouveau mot de passe',
+                ),
                 obscureText: true,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _confirmPasswordController,
-                decoration: const InputDecoration(labelText: 'Confirmer le mot de passe'),
+                decoration: const InputDecoration(
+                  labelText: 'Confirmer le mot de passe',
+                ),
                 obscureText: true,
               ),
               const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: _isLoading ? null : _submit,
-                child: _isLoading 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Mettre à jour le mot de passe'),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Mettre à jour le mot de passe'),
               ),
             ],
           ),

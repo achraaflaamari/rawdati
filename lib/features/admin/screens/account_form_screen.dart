@@ -11,11 +11,7 @@ class AccountFormScreen extends StatefulWidget {
   final String role; // 'Staff' or 'Parent'
   final UserProfile? userProfile;
 
-  const AccountFormScreen({
-    super.key,
-    required this.role,
-    this.userProfile,
-  });
+  const AccountFormScreen({super.key, required this.role, this.userProfile});
 
   @override
   State<AccountFormScreen> createState() => _AccountFormScreenState();
@@ -27,10 +23,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   final _authService = AuthService();
   final _adminService = AdminService();
-  
+
   bool _isLoading = false;
   List<ChildModel> _allChildren = [];
   final List<String> _selectedChildIds = [];
@@ -66,12 +62,18 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   Future<void> _submit() async {
     if (_emailController.text.isEmpty || _fullNameController.text.isEmpty) {
-      NotificationService.showSnackBar('Email et Nom sont requis', isError: true);
+      NotificationService.showSnackBar(
+        'Email et Nom sont requis',
+        isError: true,
+      );
       return;
     }
 
     if (widget.userProfile == null && _passwordController.text.isEmpty) {
-      NotificationService.showSnackBar('Mot de passe requis pour un nouveau compte', isError: true);
+      NotificationService.showSnackBar(
+        'Mot de passe requis pour un nouveau compte',
+        isError: true,
+      );
       return;
     }
 
@@ -91,8 +93,19 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         // Note: In a real app, we'd also handle the association of children in Supabase
         NotificationService.showSnackBar('Invitation envoyée avec succès');
       } else {
-        // Update existing profile (not implemented in AuthService yet, but could be)
-        NotificationService.showSnackBar('Mise à jour réussie (Simulation)');
+        // Update existing profile
+        final updatedProfile = UserProfile(
+          id: widget.userProfile!.id,
+          email: _emailController.text,
+          role: widget.userProfile!.role,
+          fullName: _fullNameController.text,
+          phone: _phoneController.text,
+          address: widget.role == 'Parent' ? _addressController.text : null,
+          mustChangePassword: widget.userProfile!.mustChangePassword,
+          isBlocked: widget.userProfile!.isBlocked,
+        );
+        await _adminService.updateAccount(updatedProfile);
+        NotificationService.showSnackBar('Compte mis à jour avec succès');
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -197,7 +210,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                         Wrap(
                           spacing: 8,
                           children: _allChildren.map((child) {
-                            final isSelected = _selectedChildIds.contains(child.id);
+                            final isSelected = _selectedChildIds.contains(
+                              child.id,
+                            );
                             return FilterChip(
                               label: Text(child.fullName),
                               selected: isSelected,
@@ -224,14 +239,18 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                                 decoration: const InputDecoration(
                                   labelText: 'Mot de passe initial',
                                   hintText: 'Générer ou saisir',
-                                  floatingLabelBehavior: FloatingLabelBehavior.always,
+                                  floatingLabelBehavior:
+                                      FloatingLabelBehavior.always,
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             IconButton(
                               onPressed: _generatePassword,
-                              icon: const Icon(Icons.refresh, color: AppColors.primary),
+                              icon: const Icon(
+                                Icons.refresh,
+                                color: AppColors.primary,
+                              ),
                               tooltip: 'Générer',
                             ),
                           ],
@@ -250,8 +269,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               ],
             ),
           ),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator()),
+          if (_isLoading) const Center(child: CircularProgressIndicator()),
         ],
       ),
     );

@@ -1,33 +1,64 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/models/activity.dart';
 import '../../shared/widgets/main_layout.dart';
 import '../../shared/widgets/search_filter_bar.dart';
 import 'activity_detail_screen.dart';
 
-class DailyActivitiesScreen extends StatelessWidget {
-  final String date;
+class DailyActivitiesScreen extends StatefulWidget {
+  final DateTime date;
+  final List<Activity> activities;
 
-  const DailyActivitiesScreen({super.key, required this.date});
+  const DailyActivitiesScreen({
+    super.key,
+    required this.date,
+    required this.activities,
+  });
+
+  @override
+  State<DailyActivitiesScreen> createState() => _DailyActivitiesScreenState();
+}
+
+class _DailyActivitiesScreenState extends State<DailyActivitiesScreen> {
+  late List<Activity> _filteredActivities;
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredActivities = widget.activities;
+    _searchController.addListener(_filterActivities);
+  }
+
+  void _filterActivities() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredActivities = widget.activities.where((activity) {
+        return activity.title.toLowerCase().contains(query);
+      }).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final activities = [
-      'Jeux extérieurs',
-      'Goûter',
-      'Sieste',
-      'Atelier Dessin',
-      'Chant',
-    ];
+    final displayDate = DateFormat('dd-MM-yyyy').format(widget.date);
 
     return MainLayout(
-      title: date,
+      title: displayDate,
       showBackButton: true,
       child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
             child: SearchFilterBar(
+              controller: _searchController,
               hintText: 'Rechercher une activité...',
               onFilterPressed: () => _showFilterBottomSheet(context),
             ),
@@ -35,17 +66,17 @@ class DailyActivitiesScreen extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.all(24.0),
-              itemCount: activities.length,
+              itemCount: _filteredActivities.length,
               separatorBuilder: (context, index) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
+                final activity = _filteredActivities[index];
                 return GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ActivityDetailScreen(
-                          activityName: activities[index],
-                        ),
+                        builder: (context) =>
+                            ActivityDetailScreen(activity: activity),
                       ),
                     );
                   },
@@ -72,12 +103,9 @@ class DailyActivitiesScreen extends StatelessWidget {
                             color: AppColors.secondary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: SvgPicture.asset(
-                            'assets/illustrations/icon_0${(index % 12) + 1}.svg',
-                            placeholderBuilder: (context) => const Icon(
-                              Icons.photo_library_rounded,
-                              color: AppColors.secondary,
-                            ),
+                          child: const Icon(
+                            Icons.local_activity_rounded,
+                            color: AppColors.secondary,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -86,16 +114,16 @@ class DailyActivitiesScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                activities[index],
+                                activity.title,
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
-                              const Text(
-                                '8 photos',
-                                style: TextStyle(
+                              Text(
+                                activity.category ?? 'Général',
+                                style: const TextStyle(
                                   fontSize: 14,
                                   color: AppColors.textSecondary,
                                 ),
@@ -147,26 +175,7 @@ class DailyActivitiesScreen extends StatelessWidget {
               ),
               onTap: () => Navigator.pop(context),
             ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Jeux'),
-              trailing: const Icon(Icons.circle_outlined, color: Colors.grey),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Apprentissage'),
-              trailing: const Icon(Icons.circle_outlined, color: Colors.grey),
-              onTap: () => Navigator.pop(context),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Appliquer'),
-              ),
-            ),
+            // ... more filters
           ],
         ),
       ),

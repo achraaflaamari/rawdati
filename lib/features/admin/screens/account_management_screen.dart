@@ -12,14 +12,15 @@ class AccountManagementScreen extends StatefulWidget {
   const AccountManagementScreen({super.key, this.initialTab = 0});
 
   @override
-  State<AccountManagementScreen> createState() => _AccountManagementScreenState();
+  State<AccountManagementScreen> createState() =>
+      _AccountManagementScreenState();
 }
 
 class _AccountManagementScreenState extends State<AccountManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _adminService = AdminService();
-  
+
   List<UserProfile> _staff = [];
   List<UserProfile> _parents = [];
   bool _isLoading = false;
@@ -45,7 +46,10 @@ class _AccountManagementScreenState extends State<AccountManagementScreen>
         _parents = parents;
       });
     } catch (e) {
-      NotificationService.showSnackBar('Erreur lors du chargement des comptes', isError: true);
+      NotificationService.showSnackBar(
+        'Erreur lors du chargement des comptes',
+        isError: true,
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -131,10 +135,15 @@ class _AccountManagementScreenState extends State<AccountManagementScreen>
                 child: Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: AppColors.secondary.withValues(alpha: 0.1),
+                      backgroundColor: AppColors.secondary.withValues(
+                        alpha: 0.1,
+                      ),
                       child: Text(
                         user.fullName?.substring(0, 1).toUpperCase() ?? 'U',
-                        style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -148,22 +157,42 @@ class _AccountManagementScreenState extends State<AccountManagementScreen>
                           ),
                           Text(
                             user.email,
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.primary,
+                      ),
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => AccountFormScreen(
-                            role: role,
-                            userProfile: user,
-                          ),
+                          builder: (context) =>
+                              AccountFormScreen(role: role, userProfile: user),
                         ),
                       ).then((_) => _loadAccounts()),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        user.isBlocked
+                            ? Icons.lock_open_rounded
+                            : Icons.lock_outline_rounded,
+                        color: user.isBlocked ? Colors.orange : Colors.grey,
+                      ),
+                      onPressed: () => _confirmToggleBlock(user),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Colors.red,
+                      ),
+                      onPressed: () => _confirmDelete(user),
                     ),
                   ],
                 ),
@@ -176,7 +205,9 @@ class _AccountManagementScreenState extends State<AccountManagementScreen>
           child: FloatingActionButton(
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => AccountFormScreen(role: role)),
+              MaterialPageRoute(
+                builder: (context) => AccountFormScreen(role: role),
+              ),
             ).then((_) => _loadAccounts()),
             backgroundColor: AppColors.primary,
             child: const Icon(Icons.person_add_rounded, color: Colors.white),
@@ -184,5 +215,82 @@ class _AccountManagementScreenState extends State<AccountManagementScreen>
         ),
       ],
     );
+  }
+
+  Future<void> _confirmToggleBlock(UserProfile user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(user.isBlocked ? 'Débloquer' : 'Bloquer'),
+        content: Text(
+          'Voulez-vous vraiment ${user.isBlocked ? 'débloquer' : 'bloquer'} le compte de ${user.fullName} ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              user.isBlocked ? 'Débloquer' : 'Bloquer',
+              style: TextStyle(
+                color: user.isBlocked ? AppColors.primary : Colors.orange,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _adminService.toggleBlockAccount(user.id, !user.isBlocked);
+        NotificationService.showSnackBar(
+          'Compte ${user.isBlocked ? 'débloqué' : 'bloqué'} avec succès',
+        );
+        _loadAccounts();
+      } catch (e) {
+        NotificationService.showSnackBar(
+          'Erreur lors de la modification du statut',
+          isError: true,
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDelete(UserProfile user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer'),
+        content: Text(
+          'Voulez-vous vraiment supprimer définitivement le compte de ${user.fullName} ? Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _adminService.deleteAccount(user.id);
+        NotificationService.showSnackBar('Compte supprimé avec succès');
+        _loadAccounts();
+      } catch (e) {
+        NotificationService.showSnackBar(
+          'Erreur lors de la suppression du compte',
+          isError: true,
+        );
+      }
+    }
   }
 }

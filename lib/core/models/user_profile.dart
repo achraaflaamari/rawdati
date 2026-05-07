@@ -8,6 +8,7 @@ class UserProfile {
   final String? phone;
   final String? address;
   final bool mustChangePassword;
+  final bool isBlocked;
 
   UserProfile({
     required this.id,
@@ -17,6 +18,7 @@ class UserProfile {
     this.phone,
     this.address,
     this.mustChangePassword = false,
+    this.isBlocked = false,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,7 @@ class UserProfile {
       phone: json['phone'],
       address: json['address'],
       mustChangePassword: json['must_change_password'] ?? false,
+      isBlocked: json['is_blocked'] ?? false,
     );
   }
 
@@ -40,6 +43,7 @@ class UserProfile {
       'phone': phone,
       'address': address,
       'must_change_password': mustChangePassword,
+      'is_blocked': isBlocked,
     };
   }
 

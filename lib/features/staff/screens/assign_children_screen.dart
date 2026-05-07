@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/models/activity.dart';
+import '../../../core/models/child.dart';
+import '../../../core/services/staff_service.dart';
 
 class AssignChildrenScreen extends StatefulWidget {
-  final List<String> photos;
-  final String activityName;
+  final List<ActivityPhoto> photos;
+  final Activity activity;
 
   const AssignChildrenScreen({
     super.key,
     required this.photos,
-    required this.activityName,
+    required this.activity,
   });
 
   @override
@@ -16,24 +19,43 @@ class AssignChildrenScreen extends StatefulWidget {
 }
 
 class _AssignChildrenScreenState extends State<AssignChildrenScreen> {
+  final _staffService = StaffService();
   final Map<int, List<String>> _assignments = {};
+  List<Child> _children = [];
+  bool _isLoading = true;
 
-  final List<String> _children = [
-    'Adam',
-    'Sarra',
-    'Youssef',
-    'Lina',
-    'Ahmed',
-    'Mariem',
-    'Omar',
-    'Kenan',
-    'Nour',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Initialize assignments map with empty lists
+    for (int i = 0; i < widget.photos.length; i++) {
+      _assignments[i] = widget.photos[i].assignedChildIds;
+    }
+    _loadChildren();
+  }
 
-  void _showChildrenBottomSheet(int photoIndex) {
-    List<String> selectedForThisPhoto = List.from(
-      _assignments[photoIndex] ?? [],
-    );
+  Future<void> _loadChildren() async {
+    try {
+      final children = await _staffService.getAllChildren();
+      setState(() {
+        _children = children;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _navigateToPublication() {
+    // This screen is now used for *existing* photos to assign children.
+    // The publication logic is in publication_screen.dart and is initiated
+    // from there after selecting new images.
+    // For existing photos, the assignment is saved directly in _saveAssignments.
+    // So, we don't navigate to PublicationScreen from here.
+  }
+
+  void _showChildrenBottomSheet(int index) {
+    List<String> selectedForThisPhoto = List.from(_assignments[index] ?? []);
 
     showModalBottomSheet(
       context: context,
@@ -66,108 +88,27 @@ class _AssignChildrenScreenState extends State<AssignChildrenScreen> {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Rechercher un enfant...',
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        color: AppColors.primary,
-                      ),
-                      filled: true,
-                      fillColor: AppColors.primary.withValues(alpha: 0.05),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      _buildQuickAction(
-                        label: 'Tout sélectionner',
-                        icon: Icons.done_all_rounded,
-                        onTap: () {
-                          setModalState(() {
-                            selectedForThisPhoto = List.from(_children);
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      _buildQuickAction(
-                        label: 'Désélectionner tout',
-                        icon: Icons.remove_done_rounded,
-                        onTap: () {
-                          setModalState(() {
-                            selectedForThisPhoto.clear();
-                          });
-                        },
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 16),
                   Expanded(
                     child: ListView.builder(
                       itemCount: _children.length,
-                      itemBuilder: (context, index) {
-                        final child = _children[index];
-                        final isSelected = selectedForThisPhoto.contains(child);
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.primary.withValues(alpha: 0.1)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : Colors.transparent,
-                              width: 1,
-                            ),
-                          ),
-                          child: CheckboxListTile(
-                            title: Text(
-                              child,
-                              style: TextStyle(
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.textPrimary,
-                              ),
-                            ),
-                            value: isSelected,
-                            activeColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            onChanged: (value) {
-                              setModalState(() {
-                                if (value == true) {
-                                  selectedForThisPhoto.add(child);
-                                } else {
-                                  selectedForThisPhoto.remove(child);
-                                }
-                              });
-                            },
-                            secondary: CircleAvatar(
-                              backgroundColor: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.primary.withValues(alpha: 0.1),
-                              child: Text(
-                                child[0],
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? Colors.white
-                                      : AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
+                      itemBuilder: (context, idx) {
+                        final child = _children[idx];
+                        final isSelected = selectedForThisPhoto.contains(
+                          child.id,
+                        );
+                        return CheckboxListTile(
+                          title: Text(child.fullName),
+                          value: isSelected,
+                          onChanged: (value) {
+                            setModalState(() {
+                              if (value == true) {
+                                selectedForThisPhoto.add(child.id);
+                              } else {
+                                selectedForThisPhoto.remove(child.id);
+                              }
+                            });
+                          },
                         );
                       },
                     ),
@@ -177,17 +118,11 @@ class _AssignChildrenScreenState extends State<AssignChildrenScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        setState(() {
-                          _assignments[photoIndex] = selectedForThisPhoto;
+                        setModalState(() {
+                          _assignments[index] = selectedForThisPhoto;
                         });
                         Navigator.pop(context);
                       },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
                       child: const Text('Confirmer l\'assignation'),
                     ),
                   ),
@@ -200,41 +135,22 @@ class _AssignChildrenScreenState extends State<AssignChildrenScreen> {
     );
   }
 
-  Widget _buildQuickAction({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16, color: AppColors.textSecondary),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> _saveAssignments() async {
+    setState(() => _isLoading = true);
+    try {
+      for (int i = 0; i < widget.photos.length; i++) {
+        final photo = widget.photos[i];
+        final assignedChildIds = _assignments[i] ?? [];
+        await _staffService.assignChildrenToPhoto(photo.id, assignedChildIds);
+      }
+      if (mounted) Navigator.pop(context, true); // Indicate success and pop
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de l\'assignation: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -242,167 +158,64 @@ class _AssignChildrenScreenState extends State<AssignChildrenScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Assignation'),
-        leading: TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text(
-            'Annuler',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-        ),
-        leadingWidth: 80,
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Enregistrer',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            onPressed: _isLoading ? null : _saveAssignments,
+            child: _isLoading
+                ? const CircularProgressIndicator(color: AppColors.primary)
+                : const Text(
+                    'Enregistrer',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.lightbulb_outline_rounded,
-                  color: AppColors.primary,
-                  size: 24,
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    'Cliquez sur une photo pour assigner les enfants présents.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : GridView.builder(
+              padding: const EdgeInsets.all(16),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.85,
               ),
               itemCount: widget.photos.length,
               itemBuilder: (context, index) {
-                final assignedChildren = _assignments[index] ?? [];
-                final hasAssignments = assignedChildren.isNotEmpty;
-
+                final photo = widget.photos[index];
+                final count = _assignments[index]?.length ?? 0;
                 return GestureDetector(
-                  onTap: () {
-                    _showChildrenBottomSheet(index);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(
-                        color: hasAssignments
-                            ? AppColors.primary
-                            : Colors.transparent,
-                        width: 3,
+                  onTap: () => _showChildrenBottomSheet(index),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(photo.photoUrl, fit: BoxFit.cover),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: hasAssignments
-                              ? AppColors.primary.withValues(alpha: 0.2)
-                              : Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(25),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                            widget.photos[index],
-                            fit: BoxFit.cover,
+                      if (count > 0)
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '$count',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
-                          // Overlay when assigned
-                          if (hasAssignments)
-                            Positioned(
-                              top: 12,
-                              right: 12,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                          // Children count badge
-                          if (hasAssignments)
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.bottomCenter,
-                                    end: Alignment.topCenter,
-                                    colors: [
-                                      AppColors.primary.withValues(alpha: 0.9),
-                                      AppColors.primary.withValues(alpha: 0.0),
-                                    ],
-                                  ),
-                                ),
-                                child: Text(
-                                  '${assignedChildren.length} enfants',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
+                        ),
+                    ],
                   ),
                 );
               },
             ),
-          ),
-        ],
-      ),
     );
   }
 }

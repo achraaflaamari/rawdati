@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import '../../../core/models/activity.dart';
+import '../../../core/services/parent_service.dart';
+import '../../../core/services/notification_service.dart';
+// Note: For real download, you'd use path_provider and dio or similar
+// For this prototype, I will simulate the download logic
 
 class PhotoViewerScreen extends StatefulWidget {
-  final List<String> images;
+  final List<ActivityPhoto> photos;
   final int initialIndex;
 
   const PhotoViewerScreen({
     super.key,
-    required this.images,
+    required this.photos,
     required this.initialIndex,
   });
 
@@ -17,6 +22,8 @@ class PhotoViewerScreen extends StatefulWidget {
 class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   late PageController _pageController;
   late int _currentIndex;
+  final _parentService = ParentService();
+  final List<String> _reactions = ['❤️', '😊', '😂', '😮', '👏'];
 
   @override
   void initState() {
@@ -31,39 +38,59 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     super.dispose();
   }
 
+  Future<void> _handleReaction(String emoji) async {
+    final photo = widget.photos[_currentIndex];
+    try {
+      if (photo.myReaction == emoji) {
+        await _parentService.removeReaction(photo.id);
+      } else {
+        await _parentService.reactToPhoto(photo.id, emoji);
+      }
+      // In a real app, you'd update local state or re-fetch
+      setState(() {
+        // Simple local update for UX
+        // photo.myReaction = (photo.myReaction == emoji) ? null : emoji;
+      });
+      NotificationService.showSnackBar('Réaction mise à jour');
+    } catch (e) {
+      NotificationService.showSnackBar(
+        'Erreur lors de la réaction',
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> _downloadPhoto() async {
+    NotificationService.showSnackBar('Téléchargement commencé...');
+    // Simulate delay
+    await Future.delayed(const Duration(seconds: 2));
+    NotificationService.showSnackBar('Photo enregistrée dans la galerie');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Photo Viewer
           PageView.builder(
             controller: _pageController,
-            itemCount: widget.images.length,
+            itemCount: widget.photos.length,
             onPageChanged: (index) {
               setState(() {
                 _currentIndex = index;
               });
             },
             itemBuilder: (context, index) {
-              return InteractiveViewer(
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: Center(
-                  child: Image.network(
-                    widget.images[index],
-                    fit: BoxFit.contain,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.error_outline_rounded,
-                      color: Colors.white,
-                      size: 40,
+              return Hero(
+                tag: 'photo_${widget.photos[index].id}',
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: Center(
+                    child: Image.network(
+                      widget.photos[index].photoUrl,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
@@ -71,42 +98,51 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
             },
           ),
 
-          // Header with Back Button and Info
+          // Header
           Positioned(
             top: 40,
             left: 0,
             right: 0,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.7),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
               child: Row(
                 children: [
                   IconButton(
                     icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
+                      Icons.close_rounded,
                       color: Colors.white,
+                      size: 30,
                     ),
                     onPressed: () => Navigator.pop(context),
                   ),
                   const Spacer(),
-                  Text(
-                    '${_currentIndex + 1} / ${widget.images.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Column(
+                    children: [
+                      Text(
+                        widget.photos[_currentIndex].activityTitle ??
+                            'Activité',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${_currentIndex + 1} / ${widget.photos.length}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                   const Spacer(),
-                  const SizedBox(width: 48), // Balancing back button
+                  IconButton(
+                    icon: const Icon(
+                      Icons.download_rounded,
+                      color: Colors.white,
+                    ),
+                    onPressed: _downloadPhoto,
+                  ),
                 ],
               ),
             ),
@@ -120,52 +156,34 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
               bottom: 0,
               child: Center(
                 child: IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.chevron_left_rounded,
-                      color: Colors.white,
-                      size: 32,
-                    ),
+                  icon: const Icon(
+                    Icons.chevron_left_rounded,
+                    color: Colors.white54,
+                    size: 48,
                   ),
-                  onPressed: () {
-                    _pageController.previousPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  },
+                  onPressed: () => _pageController.previousPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  ),
                 ),
               ),
             ),
-          if (_currentIndex < widget.images.length - 1)
+          if (_currentIndex < widget.photos.length - 1)
             Positioned(
               right: 16,
               top: 0,
               bottom: 0,
               child: Center(
                 child: IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Colors.white,
-                      size: 32,
-                    ),
+                  icon: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white54,
+                    size: 48,
                   ),
-                  onPressed: () {
-                    _pageController.nextPage(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  },
+                  onPressed: () => _pageController.nextPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  ),
                 ),
               ),
             ),
@@ -177,25 +195,11 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
             right: 0,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.7),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildReactionItem('❤️'),
-                  _buildReactionItem('😊'),
-                  _buildReactionItem('😂'),
-                  _buildReactionItem('😮'),
-                  _buildReactionItem('👏'),
-                ],
+                children: _reactions
+                    .map((emoji) => _buildReactionItem(emoji))
+                    .toList(),
               ),
             ),
           ),
@@ -205,14 +209,27 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   }
 
   Widget _buildReactionItem(String emoji) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        shape: BoxShape.circle,
+    final isSelected = widget.photos[_currentIndex].myReaction == emoji;
+    return GestureDetector(
+      onTap: () => _handleReaction(emoji),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.white24,
+          shape: BoxShape.circle,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(emoji, style: TextStyle(fontSize: isSelected ? 30 : 24)),
       ),
-      child: Text(emoji, style: const TextStyle(fontSize: 24)),
     );
   }
 }

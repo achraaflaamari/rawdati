@@ -54,7 +54,10 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
         _lastNameController.text.isEmpty ||
         _groupController.text.isEmpty ||
         _selectedBirthDate == null) {
-      NotificationService.showSnackBar('Veuillez remplir tous les champs', isError: true);
+      NotificationService.showSnackBar(
+        'Veuillez remplir tous les champs',
+        isError: true,
+      );
       return;
     }
 
@@ -161,13 +164,16 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
                             controller: TextEditingController(
                               text: _selectedBirthDate == null
                                   ? ''
-                                  : DateFormat('dd/MM/yyyy').format(_selectedBirthDate!),
+                                  : DateFormat(
+                                      'dd/MM/yyyy',
+                                    ).format(_selectedBirthDate!),
                             ),
                             decoration: const InputDecoration(
                               labelText: 'Date de naissance',
                               hintText: 'Choisir une date',
                               suffixIcon: Icon(Icons.calendar_today_rounded),
-                              floatingLabelBehavior: FloatingLabelBehavior.always,
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.always,
                             ),
                           ),
                         ),
@@ -185,8 +191,7 @@ class _ChildFormScreenState extends State<ChildFormScreen> {
               ],
             ),
           ),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator()),
+          if (_isLoading) const Center(child: CircularProgressIndicator()),
         ],
       ),
     );

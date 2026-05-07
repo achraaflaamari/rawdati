@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import '../../../core/models/activity.dart';
 import '../../shared/widgets/main_layout.dart';
 import 'photo_viewer_screen.dart';
 
 class PhotosListScreen extends StatelessWidget {
   final String title;
+  final List<ActivityPhoto> photos;
 
-  const PhotosListScreen({super.key, required this.title});
+  const PhotosListScreen({
+    super.key,
+    required this.title,
+    this.photos = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
-    final List<String> images = List.generate(
-      10,
-      (index) => 'https://picsum.photos/500/300?random=$index',
-    );
-
     return MainLayout(
       title: title,
       showBackButton: true,
@@ -25,15 +26,16 @@ class PhotosListScreen extends StatelessWidget {
           mainAxisSpacing: 16,
           childAspectRatio: 1,
         ),
-        itemCount: images.length,
+        itemCount: photos.length,
         itemBuilder: (context, index) {
+          final photo = photos[index];
           return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) =>
-                      PhotoViewerScreen(images: images, initialIndex: index),
+                      PhotoViewerScreen(photos: photos, initialIndex: index),
                 ),
               );
             },
@@ -42,17 +44,20 @@ class PhotosListScreen extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(images[index], fit: BoxFit.cover),
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: Row(
-                      children: [
-                        _buildMiniReaction('❤️'),
-                        _buildMiniReaction('😊'),
-                      ],
-                    ),
+                  Hero(
+                    tag: 'photo_${photo.id}',
+                    child: Image.network(photo.photoUrl, fit: BoxFit.cover),
                   ),
+                  if (photo.reactions.isNotEmpty)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Row(
+                        children: photo.reactions.keys.take(2).map((emoji) {
+                          return _buildMiniReaction(emoji);
+                        }).toList(),
+                      ),
+                    ),
                 ],
               ),
             ),

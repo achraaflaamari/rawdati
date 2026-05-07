@@ -20,7 +20,7 @@ class _GardenProfileScreenState extends State<GardenProfileScreen> {
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
   final _workingHoursController = TextEditingController();
-  
+
   final _gardenService = GardenService();
   final _authService = AuthService();
   bool _isLoading = false;
@@ -56,7 +56,10 @@ class _GardenProfileScreenState extends State<GardenProfileScreen> {
   Future<void> _saveProfile() async {
     final currentUser = _authService.currentUser;
     if (currentUser == null) {
-      NotificationService.showSnackBar('Utilisateur non connecté', isError: true);
+      NotificationService.showSnackBar(
+        'Utilisateur non connecté',
+        isError: true,
+      );
       return;
     }
 
@@ -73,7 +76,7 @@ class _GardenProfileScreenState extends State<GardenProfileScreen> {
       );
 
       await _gardenService.updateGardenInfo(garden);
-      
+
       if (mounted) {
         showModalBottomSheet(
           context: context,
@@ -86,9 +89,16 @@ class _GardenProfileScreenState extends State<GardenProfileScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle_rounded, size: 60, color: AppColors.success),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  size: 60,
+                  color: AppColors.success,
+                ),
                 const SizedBox(height: 16),
-                const Text('Profil mis à jour !', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Profil mis à jour !',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
@@ -132,7 +142,11 @@ class _GardenProfileScreenState extends State<GardenProfileScreen> {
                     children: [
                       const Text(
                         'Informations générales',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 24),
                       TextField(
@@ -193,8 +207,7 @@ class _GardenProfileScreenState extends State<GardenProfileScreen> {
               ],
             ),
           ),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator()),
+          if (_isLoading) const Center(child: CircularProgressIndicator()),
         ],
       ),
     );

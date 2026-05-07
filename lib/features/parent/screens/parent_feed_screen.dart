@@ -1,97 +1,144 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/models/activity.dart';
+import '../../../core/services/parent_service.dart';
 import '../../shared/widgets/main_layout.dart';
 import 'activity_folders_screen.dart';
 import 'photo_viewer_screen.dart';
 
-class ParentFeedScreen extends StatelessWidget {
+class ParentFeedScreen extends StatefulWidget {
   const ParentFeedScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> latestPhotos = [
-      {
-        'activity': 'Jeux extérieurs',
-        'image': 'https://picsum.photos/500/300?random=1',
-        'reactions': ['❤️', '😊'],
-      },
-      {
-        'activity': 'Atelier Dessin',
-        'image': 'https://picsum.photos/500/300?random=2',
-        'reactions': ['👏'],
-      },
-      {
-        'activity': 'Goûter',
-        'image': 'https://picsum.photos/500/300?random=3',
-        'reactions': [],
-      },
-    ];
+  State<ParentFeedScreen> createState() => _ParentFeedScreenState();
+}
 
+class _ParentFeedScreenState extends State<ParentFeedScreen> {
+  final _parentService = ParentService();
+  List<ActivityPhoto> _photos = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFeed();
+  }
+
+  Future<void> _loadFeed() async {
+    setState(() => _isLoading = true);
+    try {
+      final photos = await _parentService.getParentFeed();
+      setState(() {
+        _photos = photos;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MainLayout(
       title: 'Accueil',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Dernières photos',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const ActivityFoldersScreen(date: 'Aujourd\'hui'),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Voir tout',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
+      child: RefreshIndicator(
+        onRefresh: _loadFeed,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _photos.isEmpty
+            ? _buildEmptyState()
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Dernières photos',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const ActivityFoldersScreen(
+                                      date: 'Archives',
+                                    ),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Voir tout',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _photos.length,
+                      itemBuilder: (context, index) {
+                        return _buildPhotoCard(context, index);
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: latestPhotos.length,
-              itemBuilder: (context, index) {
-                final photo = latestPhotos[index];
-                return _buildPhotoCard(
-                  context,
-                  photo,
-                  latestPhotos.map((e) => e['image'] as String).toList(),
-                  index,
-                );
-              },
-            ),
-          ],
-        ),
+              ),
       ),
     );
   }
 
-  Widget _buildPhotoCard(
-    BuildContext context,
-    Map<String, dynamic> photo,
-    List<String> allImages,
-    int index,
-  ) {
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.photo_library_outlined,
+            size: 80,
+            color: AppColors.textSecondary.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Pas encore de photos',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Les photos de votre enfant apparaîtront ici.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoCard(BuildContext context, int index) {
+    final photo = _photos[index];
+    final dateStr = photo.activityDate != null
+        ? DateFormat('dd MMMM yyyy', 'fr_FR').format(photo.activityDate!)
+        : 'Inconnu';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 24),
       elevation: 0,
@@ -117,24 +164,26 @@ class ParentFeedScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      photo['activity'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        photo.activityTitle ?? 'Activité',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                    ),
-                    const Text(
-                      'Aujourd\'hui',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                      Text(
+                        dateStr,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -145,9 +194,9 @@ class ParentFeedScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) =>
-                      PhotoViewerScreen(images: allImages, initialIndex: index),
+                      PhotoViewerScreen(photos: _photos, initialIndex: index),
                 ),
-              );
+              ).then((_) => _loadFeed());
             },
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(
@@ -156,24 +205,16 @@ class ParentFeedScreen extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.bottomRight,
                 children: [
-                  Image.network(
-                    photo['image'],
-                    width: double.infinity,
-                    height: 250,
-                    fit: BoxFit.cover,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildReactionButton('❤️'),
-                        _buildReactionButton('😊'),
-                        _buildReactionButton('👏'),
-                        _buildReactionButton('😮'),
-                      ],
+                  Hero(
+                    tag: 'photo_${photo.id}',
+                    child: Image.network(
+                      photo.photoUrl,
+                      width: double.infinity,
+                      height: 250,
+                      fit: BoxFit.cover,
                     ),
                   ),
+                  _buildReactionSummary(photo),
                 ],
               ),
             ),
@@ -183,15 +224,29 @@ class ParentFeedScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReactionButton(String emoji) {
+  Widget _buildReactionSummary(ActivityPhoto photo) {
+    if (photo.reactions.isEmpty) return const SizedBox.shrink();
+
     return Container(
-      margin: const EdgeInsets.only(left: 4),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.9),
-        shape: BoxShape.circle,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Text(emoji, style: const TextStyle(fontSize: 16)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: photo.reactions.entries.take(3).map((e) {
+          return Text(e.key, style: const TextStyle(fontSize: 14));
+        }).toList(),
+      ),
     );
   }
 }

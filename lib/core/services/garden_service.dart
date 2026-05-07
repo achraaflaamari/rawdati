@@ -14,7 +14,7 @@ class GardenService {
           .select()
           .eq('admin_id', userId)
           .maybeSingle();
-          
+
       if (response == null) return null;
       return GardenModel.fromJson(response);
     } catch (e) {

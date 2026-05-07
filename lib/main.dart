@@ -44,7 +44,7 @@ class RawdatiApp extends StatelessWidget {
       return const LoginScreen();
     }
 
-    if (profile.mustChangePassword) {
+    if (profile.mustChangePassword && profile.role != UserRole.admin) {
       return const ChangePasswordScreen();
     }
 
@@ -74,7 +74,7 @@ class RawdatiApp extends StatelessWidget {
             );
           }
           if (snapshot.hasError) {
-             return const LoginScreen();
+            return const LoginScreen();
           }
           return snapshot.data ?? const LoginScreen();
         },

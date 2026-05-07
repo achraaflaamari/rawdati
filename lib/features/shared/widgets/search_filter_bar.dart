@@ -5,12 +5,14 @@ class SearchFilterBar extends StatelessWidget {
   final String hintText;
   final VoidCallback? onFilterPressed;
   final ValueChanged<String>? onSearchChanged;
+  final TextEditingController? controller;
 
   const SearchFilterBar({
     super.key,
     this.hintText = 'Rechercher...',
     this.onFilterPressed,
     this.onSearchChanged,
+    this.controller,
   });
 
   @override
@@ -34,6 +36,7 @@ class SearchFilterBar extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
+              controller: controller,
               onChanged: onSearchChanged,
               decoration: InputDecoration(
                 hintText: hintText,

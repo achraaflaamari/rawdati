@@ -23,18 +23,51 @@ class AdminService {
     await _supabase.from('children').delete().eq('id', id);
   }
 
+  // Statistics
+  Future<Map<String, int>> getDashboardStats() async {
+    final childrenCount = await _supabase.from('children').select('id');
+    final staffCount = await _supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', UserRole.staff.name);
+    final parentsCount = await _supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', UserRole.parent.name);
+
+    return {
+      'children': (childrenCount as List).length,
+      'staff': (staffCount as List).length,
+      'parents': (parentsCount as List).length,
+    };
+  }
+
   // Account management
   Future<List<UserProfile>> getAccountsByRole(UserRole role) async {
     final response = await _supabase
         .from('profiles')
         .select()
         .eq('role', role.name);
-    return (response as List).map((json) => UserProfile.fromJson(json)).toList();
+    return (response as List)
+        .map((json) => UserProfile.fromJson(json))
+        .toList();
+  }
+
+  Future<void> updateAccount(UserProfile profile) async {
+    await _supabase
+        .from('profiles')
+        .update(profile.toJson())
+        .eq('id', profile.id);
   }
 
   Future<void> deleteAccount(String id) async {
-    // Note: This only deletes the profile, not the auth user.
-    // In a real app, you'd use a service role or edge function to delete the auth user.
-    await _supabase.from('profiles').delete().eq('id', id);
+    await _supabase.rpc('delete_user', params: {'user_id': id});
+  }
+
+  Future<void> toggleBlockAccount(String id, bool blocked) async {
+    await _supabase.rpc(
+      'toggle_user_block',
+      params: {'user_id': id, 'blocked': blocked},
+    );
   }
 }

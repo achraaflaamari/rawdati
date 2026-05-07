@@ -1,45 +1,101 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/models/activity.dart';
+import '../../../core/services/staff_service.dart';
 import '../../shared/widgets/main_layout.dart';
 
 class PublicationScreen extends StatefulWidget {
-  const PublicationScreen({super.key});
+  final Activity activity;
+  final List<File> imageFiles;
+  final Map<int, List<String>> assignments;
+
+  const PublicationScreen({
+    super.key,
+    required this.activity,
+    required this.imageFiles,
+    required this.assignments,
+  });
 
   @override
   State<PublicationScreen> createState() => _PublicationScreenState();
 }
 
 class _PublicationScreenState extends State<PublicationScreen> {
+  final _staffService = StaffService();
   bool _isUploading = false;
   double _progress = 0.0;
+  String _uploadStatus = 'Prêt pour la publication';
 
-  void _startUpload() {
+  Future<void> _startFinalPublication() async {
     setState(() {
       _isUploading = true;
+      _progress = 0.0;
+      _uploadStatus = 'Initialisation...';
     });
 
-    // Simulate upload progress
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _updateProgress();
-    });
-  }
+    try {
+      final totalSteps = widget.imageFiles.length;
 
-  void _updateProgress() {
-    if (_progress < 1.0) {
-      setState(() {
-        _progress += 0.1;
-      });
-      Future.delayed(const Duration(milliseconds: 300), () {
-        _updateProgress();
-      });
-    } else {
-      _showSuccessBottomSheet();
+      for (int i = 0; i < widget.imageFiles.length; i++) {
+        final file = widget.imageFiles[i];
+        final childIds = widget.assignments[i] ?? [];
+
+        setState(() {
+          _uploadStatus = 'Upload photo ${i + 1}/$totalSteps...';
+        });
+
+        // 1. Upload file to storage
+        final photoUrl = await _staffService.uploadPhoto(file);
+
+        // 2. Create photo entry in DB
+        final response = await Supabase.instance.client
+            .from('activity_photos')
+            .insert({'activity_id': widget.activity.id, 'photo_url': photoUrl})
+            .select()
+            .single();
+
+        final photoId = response['id'];
+
+        // 3. Create assignments
+        if (childIds.isNotEmpty) {
+          setState(() {
+            _uploadStatus = 'Assignation photo ${i + 1}/$totalSteps...';
+          });
+          await _staffService.assignChildrenToPhoto(photoId, childIds);
+        }
+
+        setState(() {
+          _progress = (i + 1) / totalSteps;
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _progress = 1.0;
+          _uploadStatus = 'Publication terminée !';
+        });
+        _showSuccessBottomSheet();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadStatus = 'Erreur lors de la publication';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la publication: $e')),
+        );
+      }
     }
   }
 
   void _showSuccessBottomSheet() {
     showModalBottomSheet(
       context: context,
+      isDismissible: false,
+      enableDrag: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
@@ -78,73 +134,14 @@ class _PublicationScreenState extends State<PublicationScreen> {
                 style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                },
-                child: const Text('Retour à l\'accueil'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showScheduleBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Programmer la publication',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                  child: const Text('Retour à l\'accueil'),
                 ),
-              ),
-              const SizedBox(height: 24),
-              ListTile(
-                leading: const Icon(
-                  Icons.calendar_today_rounded,
-                  color: AppColors.primary,
-                ),
-                title: const Text('Choisir une date'),
-                onTap: () {},
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                tileColor: Colors.grey.withValues(alpha: 0.05),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(
-                  Icons.access_time_rounded,
-                  color: AppColors.primary,
-                ),
-                title: const Text('Choisir une heure'),
-                onTap: () {},
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                tileColor: Colors.grey.withValues(alpha: 0.05),
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _startUpload();
-                },
-                child: const Text('Confirmer la programmation'),
               ),
             ],
           ),
@@ -155,6 +152,11 @@ class _PublicationScreenState extends State<PublicationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final uniqueChildren = widget.assignments.values
+        .expand((e) => e)
+        .toSet()
+        .length;
+
     return MainLayout(
       title: 'Publication',
       showBackButton: true,
@@ -190,29 +192,29 @@ class _PublicationScreenState extends State<PublicationScreen> {
                   _buildSummaryItem(
                     Icons.folder_open_rounded,
                     'Activité',
-                    'Jeux extérieurs',
+                    widget.activity.title,
                   ),
                   const Divider(height: 32),
                   _buildSummaryItem(
                     Icons.photo_library_outlined,
                     'Photos',
-                    '6 photos sélectionnées',
+                    '${widget.imageFiles.length} photos à uploader',
                   ),
                   const Divider(height: 32),
                   _buildSummaryItem(
                     Icons.people_outline_rounded,
                     'Enfants',
-                    '3 enfants assignés',
+                    '$uniqueChildren enfants concernés',
                   ),
                 ],
               ),
             ),
             const Spacer(),
             if (_isUploading) ...[
-              const Center(
+              Center(
                 child: Text(
-                  'Upload en cours...',
-                  style: TextStyle(
+                  _uploadStatus,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
@@ -238,13 +240,9 @@ class _PublicationScreenState extends State<PublicationScreen> {
                 ),
               ),
             ] else ...[
-              OutlinedButton(
-                onPressed: _showScheduleBottomSheet,
-                child: const Text('Programmer pour plus tard'),
-              ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _startUpload,
+                onPressed: _startFinalPublication,
                 child: const Text('Publier maintenant'),
               ),
             ],

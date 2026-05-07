@@ -42,21 +42,36 @@ class AuthService {
   }
 
   Future<void> updatePassword(String newPassword) async {
-    await _supabase.auth.updateUser(
-      UserAttributes(password: newPassword),
-    );
+    await _supabase.auth.updateUser(UserAttributes(password: newPassword));
 
     final userId = _supabase.auth.currentUser?.id;
     if (userId != null) {
-      await _supabase.from('profiles').update({
-        'must_change_password': false,
-      }).eq('id', userId);
+      await _supabase
+          .from('profiles')
+          .update({'must_change_password': false})
+          .eq('id', userId);
+    }
+  }
+
+  Future<void> updateEmail(String newEmail) async {
+    await _supabase.auth.updateUser(UserAttributes(email: newEmail));
+
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId != null) {
+      await _supabase
+          .from('profiles')
+          .update({'email': newEmail})
+          .eq('id', userId);
     }
   }
 
   String generateRandomPassword() {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*()';
-    return List.generate(10, (index) => chars[Random().nextInt(chars.length)]).join();
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%^&*()';
+    return List.generate(
+      10,
+      (index) => chars[Random().nextInt(chars.length)],
+    ).join();
   }
 
   Future<UserProfile?> getUserProfile(String userId) async {
