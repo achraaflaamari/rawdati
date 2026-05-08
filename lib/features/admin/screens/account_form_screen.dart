@@ -49,6 +49,15 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       setState(() {
         _allChildren = children;
       });
+
+      if (widget.userProfile != null && widget.role == 'Parent') {
+        final childIds = await _adminService.getParentChildIds(
+          widget.userProfile!.id,
+        );
+        setState(() {
+          _selectedChildIds.addAll(childIds);
+        });
+      }
     } catch (e) {
       // Handle error
     }
@@ -80,9 +89,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     setState(() => _isLoading = true);
 
     try {
+      String? userId;
       if (widget.userProfile == null) {
         // Create new account
-        await _authService.signUp(
+        userId = await _authService.signUp(
           email: _emailController.text,
           password: _passwordController.text,
           role: widget.role == 'Staff' ? UserRole.staff : UserRole.parent,
@@ -90,12 +100,12 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           phone: _phoneController.text,
           address: widget.role == 'Parent' ? _addressController.text : null,
         );
-        // Note: In a real app, we'd also handle the association of children in Supabase
         NotificationService.showSnackBar('Invitation envoyée avec succès');
       } else {
         // Update existing profile
+        userId = widget.userProfile!.id;
         final updatedProfile = UserProfile(
-          id: widget.userProfile!.id,
+          id: userId,
           email: _emailController.text,
           role: widget.userProfile!.role,
           fullName: _fullNameController.text,
@@ -107,6 +117,12 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         await _adminService.updateAccount(updatedProfile);
         NotificationService.showSnackBar('Compte mis à jour avec succès');
       }
+
+      // Handle child associations for parents
+      if (userId != null && widget.role == 'Parent') {
+        await _adminService.linkParentToChildren(userId, _selectedChildIds);
+      }
+
       if (mounted) Navigator.pop(context);
     } catch (e) {
       NotificationService.showSnackBar('Erreur: $e', isError: true);

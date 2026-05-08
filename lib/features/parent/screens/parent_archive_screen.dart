@@ -31,10 +31,17 @@ class _ParentArchiveScreenState extends State<ParentArchiveScreen> {
     try {
       final photos = await _parentService.getParentFeed();
       final Map<String, List<ActivityPhoto>> groups = {};
+      
+      final now = DateTime.now();
+      final todayStr = DateFormat('yyyy-MM-dd').format(now);
 
       for (var photo in photos) {
         if (photo.activityDate != null) {
           final dateKey = DateFormat('yyyy-MM-dd').format(photo.activityDate!);
+          
+          // Skip today's photos in archive
+          if (dateKey == todayStr) continue;
+
           if (!groups.containsKey(dateKey)) {
             groups[dateKey] = [];
           }

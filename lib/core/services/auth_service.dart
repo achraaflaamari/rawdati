@@ -15,7 +15,7 @@ class AuthService {
     );
   }
 
-  Future<void> signUp({
+  Future<String?> signUp({
     required String email,
     required String password,
     required UserRole role,
@@ -38,7 +38,9 @@ class AuthService {
         'address': address,
         'must_change_password': true,
       });
+      return response.user!.id;
     }
+    return null;
   }
 
   Future<void> updatePassword(String newPassword) async {

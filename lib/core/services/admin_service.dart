@@ -64,10 +64,25 @@ class AdminService {
     await _supabase.rpc('delete_user', params: {'user_id': id});
   }
 
-  Future<void> toggleBlockAccount(String id, bool blocked) async {
-    await _supabase.rpc(
-      'toggle_user_block',
-      params: {'user_id': id, 'blocked': blocked},
-    );
+  Future<void> linkParentToChildren(String parentId, List<String> childIds) async {
+    // Delete existing links for this parent
+    await _supabase.from('child_parents').delete().eq('parent_id', parentId);
+
+    if (childIds.isNotEmpty) {
+      final inserts = childIds
+          .map((childId) => {'parent_id': parentId, 'child_id': childId})
+          .toList();
+
+      await _supabase.from('child_parents').insert(inserts);
+    }
+  }
+
+  Future<List<String>> getParentChildIds(String parentId) async {
+    final response = await _supabase
+        .from('child_parents')
+        .select('child_id')
+        .eq('parent_id', parentId);
+    
+    return (response as List).map((json) => json['child_id'] as String).toList();
   }
 }

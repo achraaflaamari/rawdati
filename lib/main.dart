@@ -44,58 +44,61 @@ class _RawdatiAppState extends State<RawdatiApp> {
   }
 
   void _handleAuthChanges() {
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
-      final AuthChangeEvent event = data.event;
-      final Session? session = data.session;
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      _handleSession(data.session, data.event);
+    });
+  }
 
-      if (session == null) {
+  Future<void> _handleSession(Session? session, [AuthChangeEvent? event]) async {
+    if (session == null) {
+      if (mounted) setState(() => _initialScreen = const LoginScreen());
+      return;
+    }
+
+    try {
+      final profile = await _authService.getUserProfile(session.user.id);
+      if (profile == null) {
+        await _authService.signOut();
         if (mounted) setState(() => _initialScreen = const LoginScreen());
         return;
       }
 
-      if (event == AuthChangeEvent.signedIn ||
-          event == AuthChangeEvent.initialSession ||
-          event == AuthChangeEvent.tokenRefreshed ||
-          event == AuthChangeEvent.passwordRecovery) {
-        final profile = await _authService.getUserProfile(session.user.id);
-        if (profile == null) {
-          await _authService.signOut();
-          if (mounted) setState(() => _initialScreen = const LoginScreen());
-          return;
-        }
-
-        if (profile.isBlocked) {
-          await _authService.signOut();
-          NotificationService.showSnackBar(
-            'Votre compte est bloqué. Veuillez contacter l\'administration.',
-            isError: true,
-          );
-          if (mounted) setState(() => _initialScreen = const LoginScreen());
-          return;
-        }
-
-        if (profile.mustChangePassword && profile.role != UserRole.admin) {
-          if (mounted) setState(() => _initialScreen = const ChangePasswordScreen());
-          return;
-        }
-
-        if (mounted) {
-          setState(() {
-            switch (profile.role) {
-              case UserRole.admin:
-                _initialScreen = const MainNavigationScreen();
-                break;
-              case UserRole.staff:
-                _initialScreen = const StaffNavigationScreen();
-                break;
-              case UserRole.parent:
-                _initialScreen = const ParentNavigationScreen();
-                break;
-            }
-          });
-        }
+      if (profile.isBlocked) {
+        await _authService.signOut();
+        NotificationService.showSnackBar(
+          'Votre compte est bloqué. Veuillez contacter l\'administration.',
+          isError: true,
+        );
+        if (mounted) setState(() => _initialScreen = const LoginScreen());
+        return;
       }
-    });
+
+      if (profile.mustChangePassword && profile.role != UserRole.admin) {
+        if (mounted) {
+          setState(() => _initialScreen = const ChangePasswordScreen());
+        }
+        return;
+      }
+
+      if (mounted) {
+        setState(() {
+          switch (profile.role) {
+            case UserRole.admin:
+              _initialScreen = const MainNavigationScreen();
+              break;
+            case UserRole.staff:
+              _initialScreen = const StaffNavigationScreen();
+              break;
+            case UserRole.parent:
+              _initialScreen = const ParentNavigationScreen();
+              break;
+          }
+        });
+      }
+    } catch (e) {
+      // In case of error fetching profile, don't leave user stuck
+      if (mounted) setState(() => _initialScreen = const LoginScreen());
+    }
   }
 
   @override

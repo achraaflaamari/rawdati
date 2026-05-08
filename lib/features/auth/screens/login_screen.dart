@@ -45,15 +45,17 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await _authService.signIn(
+      await _authService.signIn(
         email: email,
         password: password,
       );
 
-      // If response.user is not null, main.dart will automatically
-      // detect the state change and redirect the user.
-      // We don't need manual navigation here anymore.
-      
+      // We wait a bit to let main.dart handle the navigation.
+      // If it doesn't happen (e.g. slow profile fetch), we re-enable the button.
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     } on AuthException catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);

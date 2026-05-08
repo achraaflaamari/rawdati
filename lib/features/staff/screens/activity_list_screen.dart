@@ -28,8 +28,16 @@ class _ActivityListScreenState extends State<ActivityListScreen> {
     try {
       final activities = await _staffService.getAllActivities();
       final Map<String, List<Activity>> grouped = {};
+      
+      final now = DateTime.now();
+      final todayStr = DateFormat('yyyy-MM-dd').format(now);
+
       for (var activity in activities) {
         final dateStr = DateFormat('yyyy-MM-dd').format(activity.activityDate);
+        
+        // Skip today's activities in the list (already shown in dashboard)
+        if (dateStr == todayStr) continue;
+
         if (grouped[dateStr] == null) {
           grouped[dateStr] = [];
         }
