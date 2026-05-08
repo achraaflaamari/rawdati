@@ -85,4 +85,11 @@ class AdminService {
     
     return (response as List).map((json) => json['child_id'] as String).toList();
   }
+
+  Future<void> toggleBlockAccount(String id, bool blocked) async {
+    await _supabase.rpc(
+      'toggle_user_block',
+      params: {'user_id': id, 'blocked': blocked},
+    );
+  }
 }

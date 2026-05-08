@@ -16,7 +16,6 @@ class ParentArchiveScreen extends StatefulWidget {
 
 class _ParentArchiveScreenState extends State<ParentArchiveScreen> {
   final _parentService = ParentService();
-  List<ActivityPhoto> _allPhotos = [];
   Map<String, List<ActivityPhoto>> _groupedPhotos = {};
   bool _isLoading = true;
 

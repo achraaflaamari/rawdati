@@ -46,14 +46,6 @@ class _AssignChildrenScreenState extends State<AssignChildrenScreen> {
     }
   }
 
-  void _navigateToPublication() {
-    // This screen is now used for *existing* photos to assign children.
-    // The publication logic is in publication_screen.dart and is initiated
-    // from there after selecting new images.
-    // For existing photos, the assignment is saved directly in _saveAssignments.
-    // So, we don't navigate to PublicationScreen from here.
-  }
-
   void _showChildrenBottomSheet(int index) {
     List<String> selectedForThisPhoto = List.from(_assignments[index] ?? []);
 
@@ -145,9 +137,11 @@ class _AssignChildrenScreenState extends State<AssignChildrenScreen> {
       }
       if (mounted) Navigator.pop(context, true); // Indicate success and pop
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de l\'assignation: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de l\'assignation: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

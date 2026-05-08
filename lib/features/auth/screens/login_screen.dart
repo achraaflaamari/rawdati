@@ -8,7 +8,6 @@ import '../../shared/screens/main_navigation_screen.dart';
 import '../../staff/screens/staff_navigation_screen.dart';
 import '../../parent/screens/parent_navigation_screen.dart';
 import 'forgot_password_screen.dart';
-import 'change_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
