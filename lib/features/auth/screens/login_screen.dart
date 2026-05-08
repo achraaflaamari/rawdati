@@ -8,6 +8,7 @@ import '../../shared/screens/main_navigation_screen.dart';
 import '../../staff/screens/staff_navigation_screen.dart';
 import '../../parent/screens/parent_navigation_screen.dart';
 import 'forgot_password_screen.dart';
+import 'change_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,16 +45,45 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.signIn(
+      final response = await _authService.signIn(
         email: email,
         password: password,
       );
 
-      // We wait a bit to let main.dart handle the navigation.
-      // If it doesn't happen (e.g. slow profile fetch), we re-enable the button.
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        setState(() => _isLoading = false);
+      if (response.user != null) {
+        final profile = await _authService.getUserProfile(response.user!.id);
+        if (mounted) {
+          if (profile == null) {
+            setState(() => _isLoading = false);
+            NotificationService.showSnackBar(
+              'Erreur lors de la récupération du profil',
+              isError: true,
+            );
+            return;
+          }
+
+          if (profile.isBlocked) {
+            await _authService.signOut();
+            setState(() => _isLoading = false);
+            NotificationService.showSnackBar(
+              'Votre compte est bloqué.',
+              isError: true,
+            );
+            return;
+          }
+
+          if (profile.mustChangePassword && profile.role != UserRole.admin) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ChangePasswordScreen(),
+              ),
+            );
+            return;
+          }
+
+          _navigateByRole(profile.role);
+        }
       }
     } on AuthException catch (e) {
       if (mounted) {

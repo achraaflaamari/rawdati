@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -50,6 +52,8 @@ class _RawdatiAppState extends State<RawdatiApp> {
   }
 
   Future<void> _handleSession(Session? session, [AuthChangeEvent? event]) async {
+    developer.log('Auth event: $event, session: ${session != null}');
+
     if (session == null) {
       if (mounted) setState(() => _initialScreen = const LoginScreen());
       return;
@@ -57,6 +61,8 @@ class _RawdatiAppState extends State<RawdatiApp> {
 
     try {
       final profile = await _authService.getUserProfile(session.user.id);
+      developer.log('Profile fetched: ${profile?.role}');
+
       if (profile == null) {
         await _authService.signOut();
         if (mounted) setState(() => _initialScreen = const LoginScreen());
