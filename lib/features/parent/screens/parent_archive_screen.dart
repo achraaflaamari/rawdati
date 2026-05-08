@@ -49,7 +49,6 @@ class _ParentArchiveScreenState extends State<ParentArchiveScreen> {
       }
 
       setState(() {
-        _allPhotos = photos;
         _groupedPhotos = groups;
         _isLoading = false;
       });
