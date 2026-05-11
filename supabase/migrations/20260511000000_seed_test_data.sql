@@ -1,27 +1,27 @@
 -- Seed data for testing
 
--- Enable pgcrypto for password hashing
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- Ensure pgcrypto is available in the public schema
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
 -- 1. Create Users in auth.users
 -- Admin
 INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_user_meta_data, created_at, updated_at, aud, role)
 VALUES 
-('d1111111-1111-1111-1111-111111111111', 'admin@rawdati.com', crypt('password123', gen_salt('bf')), now(), '{"role": "admin", "full_name": "Admin Rawdati"}'::jsonb, now(), now(), 'authenticated', 'authenticated')
+('d1111111-1111-1111-1111-111111111111', 'admin@rawdati.com', public.crypt('password123', public.gen_salt('bf')), now(), '{"role": "admin", "full_name": "Admin Rawdati"}'::jsonb, now(), now(), 'authenticated', 'authenticated')
 ON CONFLICT (id) DO NOTHING;
 
 -- Staff
 INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_user_meta_data, created_at, updated_at, aud, role)
 VALUES 
-('d2222222-2222-2222-2222-222222222222', 'staff1@rawdati.com', crypt('password123', gen_salt('bf')), now(), '{"role": "staff", "full_name": "Sarah Staff", "phone": "12345678"}'::jsonb, now(), now(), 'authenticated', 'authenticated'),
-('d3333333-3333-3333-3333-333333333333', 'staff2@rawdati.com', crypt('password123', gen_salt('bf')), now(), '{"role": "staff", "full_name": "Ahmed Staff", "phone": "87654321"}'::jsonb, now(), now(), 'authenticated', 'authenticated')
+('d2222222-2222-2222-2222-222222222222', 'staff1@rawdati.com', public.crypt('password123', public.gen_salt('bf')), now(), '{"role": "staff", "full_name": "Sarah Staff", "phone": "12345678"}'::jsonb, now(), now(), 'authenticated', 'authenticated'),
+('d3333333-3333-3333-3333-333333333333', 'staff2@rawdati.com', public.crypt('password123', public.gen_salt('bf')), now(), '{"role": "staff", "full_name": "Ahmed Staff", "phone": "87654321"}'::jsonb, now(), now(), 'authenticated', 'authenticated')
 ON CONFLICT (id) DO NOTHING;
 
 -- Parents
 INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, raw_user_meta_data, created_at, updated_at, aud, role)
 VALUES 
-('d4444444-4444-4444-4444-444444444444', 'parent1@gmail.com', crypt('password123', gen_salt('bf')), now(), '{"role": "parent", "full_name": "John Doe", "phone": "55555555"}'::jsonb, now(), now(), 'authenticated', 'authenticated'),
-('d5555555-5555-5555-5555-555555555555', 'parent2@gmail.com', crypt('password123', gen_salt('bf')), now(), '{"role": "parent", "full_name": "Jane Smith", "phone": "44444444"}'::jsonb, now(), now(), 'authenticated', 'authenticated')
+('d4444444-4444-4444-4444-444444444444', 'parent1@gmail.com', public.crypt('password123', public.gen_salt('bf')), now(), '{"role": "parent", "full_name": "John Doe", "phone": "55555555"}'::jsonb, now(), now(), 'authenticated', 'authenticated'),
+('d5555555-5555-5555-5555-555555555555', 'parent2@gmail.com', public.crypt('password123', public.gen_salt('bf')), now(), '{"role": "parent", "full_name": "Jane Smith", "phone": "44444444"}'::jsonb, now(), now(), 'authenticated', 'authenticated')
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Garden Info
