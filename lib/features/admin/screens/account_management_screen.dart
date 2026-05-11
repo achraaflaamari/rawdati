@@ -139,7 +139,9 @@ class _AccountManagementScreenState extends State<AccountManagementScreen>
                         alpha: 0.1,
                       ),
                       child: Text(
-                        user.fullName?.substring(0, 1).toUpperCase() ?? 'U',
+                        (user.fullName != null && user.fullName!.isNotEmpty)
+                            ? user.fullName!.substring(0, 1).toUpperCase()
+                            : 'U',
                         style: const TextStyle(
                           color: AppColors.secondary,
                           fontWeight: FontWeight.bold,

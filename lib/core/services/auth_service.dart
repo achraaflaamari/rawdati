@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../constants/supabase_config.dart';
 import '../models/user_profile.dart';
 
 class AuthService {
@@ -23,24 +24,52 @@ class AuthService {
     String? phone,
     String? address,
   }) async {
+    // Try server-side creation first (does not replace admin session).
+    try {
+      final userId = await _supabase.rpc(
+        'create_user_by_admin',
+        params: {
+          'p_email': email,
+          'p_password': password,
+          'p_role': role.name,
+          'p_full_name': fullName,
+          'p_phone': phone,
+          'p_address': address,
+        },
+      );
+      return userId as String?;
+    } on PostgrestException catch (_) {
+      // Fallback: use client-side signUp and restore the admin session after.
+    }
+
+    // Save current admin session so we can restore it after signUp.
+    // signUp creates a session for the new user, which would replace the admin's.
+    final previousSession = _supabase.auth.currentSession;
+
+    // We pass metadata so the SQL trigger 'handle_new_user' creates the profile.
     final response = await _supabase.auth.signUp(
       email: email,
       password: password,
-    );
-
-    if (response.user != null) {
-      await _supabase.from('profiles').insert({
-        'id': response.user!.id,
-        'email': email,
+      data: {
         'role': role.name,
         'full_name': fullName,
         'phone': phone,
         'address': address,
         'must_change_password': true,
-      });
-      return response.user!.id;
+      },
+    );
+
+    // Restore admin session so the admin stays logged in.
+    if (previousSession != null && response.session != null) {
+      try {
+        await _supabase.auth.setSession(previousSession.refreshToken!);
+      } catch (_) {
+        // If restore fails, sign out so the admin can log in again.
+        await _supabase.auth.signOut();
+      }
     }
-    return null;
+
+    return response.user?.id;
   }
 
   Future<void> updatePassword(String newPassword) async {

@@ -21,6 +21,7 @@ void main() async {
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
+    debug: true, // a changer dans la prod
   );
 
   await Permission.notification.request();
@@ -51,7 +52,10 @@ class _RawdatiAppState extends State<RawdatiApp> {
     });
   }
 
-  Future<void> _handleSession(Session? session, [AuthChangeEvent? event]) async {
+  Future<void> _handleSession(
+    Session? session, [
+    AuthChangeEvent? event,
+  ]) async {
     developer.log('Auth event: $event, session: ${session != null}');
 
     if (session == null) {
@@ -114,10 +118,9 @@ class _RawdatiAppState extends State<RawdatiApp> {
       scaffoldMessengerKey: NotificationService.messengerKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: _initialScreen ??
-          const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          ),
+      home:
+          _initialScreen ??
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
   }
 }
