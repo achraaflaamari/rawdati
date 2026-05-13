@@ -108,4 +108,63 @@ class StaffService {
 
     return (response as List).map((json) => Activity.fromJson(json)).toList();
   }
+
+  Future<void> deleteActivityDate(DateTime date) async {
+    final dateString = date.toIso8601String().split('T')[0];
+    await _supabase
+        .from('activities')
+        .delete()
+        .eq('activity_date', dateString)
+        .eq('staff_id', _supabase.auth.currentUser!.id);
+  }
+
+  Future<void> deleteActivity(String activityId) async {
+    await _supabase.from('activities').delete().eq('id', activityId);
+  }
+
+  Future<void> updateActivity(
+    String activityId, {
+    String? title,
+    String? description,
+    String? category,
+  }) async {
+    final Map<String, dynamic> updates = {};
+    if (title != null) updates['title'] = title;
+    if (description != null) updates['description'] = description;
+    if (category != null) updates['category'] = category;
+    updates['updated_at'] = DateTime.now().toIso8601String();
+
+    await _supabase.from('activities').update(updates).eq('id', activityId);
+  }
+
+  Future<void> deletePhoto(String photoId, String photoUrl) async {
+    // Delete from database
+    await _supabase.from('activity_photos').delete().eq('id', photoId);
+
+    // Delete from storage
+    try {
+      final uri = Uri.parse(photoUrl);
+      final pathSegments = uri.pathSegments;
+      // The URL format is usually .../storage/v1/object/public/photos/activities/filename
+      // We need the path after 'photos/'
+      final photosIndex = pathSegments.indexOf('photos');
+      if (photosIndex != -1 && photosIndex < pathSegments.length - 1) {
+        final storagePath = pathSegments.sublist(photosIndex + 1).join('/');
+        await _supabase.storage.from('photos').remove([storagePath]);
+      }
+    } catch (e) {
+      // Ignore storage deletion errors
+    }
+  }
+
+  Future<List<Child>> getChildrenByPhoto(String photoId) async {
+    final response = await _supabase
+        .from('photo_assignments')
+        .select('children(*)')
+        .eq('photo_id', photoId);
+
+    return (response as List)
+        .map((json) => Child.fromJson(json['children']))
+        .toList();
+  }
 }

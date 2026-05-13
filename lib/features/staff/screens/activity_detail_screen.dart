@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/activity.dart';
+import '../../../core/models/child.dart';
 import '../../../core/services/staff_service.dart';
 import '../../shared/widgets/main_layout.dart';
 import 'assign_children_screen.dart';
@@ -42,26 +42,14 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   }
 
   Future<void> _pickAndUploadPhotos() async {
-    // Check permissions
-    if (Platform.isAndroid || Platform.isIOS) {
-      final status = await Permission.photos.request();
-      if (status.isPermanentlyDenied) {
-        if (mounted) {
-          openAppSettings();
-          return;
-        }
-      }
-      if (!status.isGranted) return;
-    }
-
-    final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage();
-
-    if (pickedFiles.isEmpty) return;
-
-    setState(() => _isUploading = true);
-
     try {
+      final picker = ImagePicker();
+      final pickedFiles = await picker.pickMultiImage();
+
+      if (pickedFiles.isEmpty) return;
+
+      setState(() => _isUploading = true);
+
       final List<String> urls = [];
       for (final file in pickedFiles) {
         final url = await _staffService.uploadPhoto(File(file.path));
@@ -70,6 +58,12 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
       await _staffService.addPhotosToActivity(widget.activity.id, urls);
       await _loadPhotos();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photos ajoutées avec succès')),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -79,6 +73,109 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
+  }
+
+  Future<void> _deletePhoto(ActivityPhoto photo) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer la photo'),
+        content: const Text('Voulez-vous vraiment supprimer cette photo ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _staffService.deletePhoto(photo.id, photo.photoUrl);
+        setState(() {
+          _photos.removeWhere((p) => p.id == photo.id);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Photo supprimée')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _showPhotoDetails(ActivityPhoto photo) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        child: Column(
+          children: [
+            AppBar(
+              title: const Text('Détails de la photo'),
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Image.network(
+                      photo.photoUrl,
+                      fit: BoxFit.contain,
+                      width: double.infinity,
+                      height: 400,
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Enfants assignés',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    FutureBuilder<List<Child>>(
+                      future: _staffService.getChildrenByPhoto(photo.id),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const CircularProgressIndicator();
+                        }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const Text('Aucun enfant assigné à cette photo.');
+                        }
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: snapshot.data!.length,
+                          itemBuilder: (context, index) {
+                            final child = snapshot.data![index];
+                            return ListTile(
+                              leading: const CircleAvatar(child: Icon(Icons.person)),
+                              title: Text('${child.firstName} ${child.lastName}'),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -209,19 +306,41 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               final photo = _photos[index];
               return Stack(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      image: DecorationImage(
-                        image: NetworkImage(photo.photoUrl),
-                        fit: BoxFit.cover,
+                  GestureDetector(
+                    onTap: () => _showPhotoDetails(photo),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        image: DecorationImage(
+                          image: NetworkImage(photo.photoUrl),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => _deletePhoto(photo),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 12,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
                   if (photo.assignedChildIds.isNotEmpty)
                     Positioned(
-                      top: 4,
-                      right: 4,
+                      bottom: 4,
+                      left: 4,
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: const BoxDecoration(

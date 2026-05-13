@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/activity.dart';
+import '../../../core/services/staff_service.dart';
 import '../../shared/widgets/main_layout.dart';
 import '../../shared/widgets/search_filter_bar.dart';
 import 'activity_detail_screen.dart';
+import 'edit_activity_screen.dart';
 
 class DailyActivitiesScreen extends StatefulWidget {
   final DateTime date;
@@ -21,23 +23,94 @@ class DailyActivitiesScreen extends StatefulWidget {
 }
 
 class _DailyActivitiesScreenState extends State<DailyActivitiesScreen> {
+  final _staffService = StaffService();
+  late List<Activity> _currentActivities;
   late List<Activity> _filteredActivities;
   final _searchController = TextEditingController();
+  String? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
-    _filteredActivities = widget.activities;
+    _currentActivities = List.from(widget.activities);
+    _filteredActivities = _currentActivities;
     _searchController.addListener(_filterActivities);
   }
 
   void _filterActivities() {
     final query = _searchController.text.toLowerCase();
     setState(() {
-      _filteredActivities = widget.activities.where((activity) {
-        return activity.title.toLowerCase().contains(query);
+      _filteredActivities = _currentActivities.where((activity) {
+        final matchesQuery = activity.title.toLowerCase().contains(query);
+        final matchesCategory = _selectedCategory == null || 
+                                activity.category == _selectedCategory;
+        return matchesQuery && matchesCategory;
       }).toList();
     });
+  }
+
+  Future<void> _deleteActivity(Activity activity) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer l\'activité'),
+        content: Text(
+          'Voulez-vous vraiment supprimer l\'activité "${activity.title}" ? Toutes les photos et assignations associées seront supprimées.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _staffService.deleteActivity(activity.id);
+        setState(() {
+          _currentActivities.removeWhere((a) => a.id == activity.id);
+          _filterActivities();
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Activité supprimée')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _editActivity(Activity activity) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditActivityScreen(
+          activity: activity,
+          onUpdate: (updatedActivity) {
+            setState(() {
+              final index = _currentActivities.indexWhere((a) => a.id == updatedActivity.id);
+              if (index != -1) {
+                _currentActivities[index] = updatedActivity;
+                _filterActivities();
+              }
+            });
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -64,84 +137,87 @@ class _DailyActivitiesScreenState extends State<DailyActivitiesScreen> {
             ),
           ),
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(24.0),
-              itemCount: _filteredActivities.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final activity = _filteredActivities[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ActivityDetailScreen(activity: activity),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
+            child: _filteredActivities.isEmpty
+                ? const Center(child: Text('Aucune activité trouvée'))
+                : ListView.separated(
+                    padding: const EdgeInsets.all(24.0),
+                    itemCount: _filteredActivities.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      final activity = _filteredActivities[index];
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          height: 56,
-                          width: 56,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          leading: Container(
+                            height: 56,
+                            width: 56,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.local_activity_rounded,
+                              color: AppColors.secondary,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.local_activity_rounded,
-                            color: AppColors.secondary,
+                          title: Text(
+                            activity.title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          subtitle: Text(
+                            activity.category ?? 'Général',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                activity.title,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+                                onPressed: () => _editActivity(activity),
                               ),
-                              Text(
-                                activity.category ?? 'Général',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary,
-                                ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                                onPressed: () => _deleteActivity(activity),
+                              ),
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 16,
+                                color: AppColors.textSecondary,
                               ),
                             ],
                           ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    ActivityDetailScreen(activity: activity),
+                              ),
+                            );
+                          },
                         ),
-                        const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -149,6 +225,7 @@ class _DailyActivitiesScreenState extends State<DailyActivitiesScreen> {
   }
 
   void _showFilterBottomSheet(BuildContext context) {
+    final categories = ['Général', 'Sport', 'Art', 'Musique', 'Lecture'];
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -169,13 +246,31 @@ class _DailyActivitiesScreenState extends State<DailyActivitiesScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Toutes les activités'),
-              trailing: const Icon(
-                Icons.check_circle_rounded,
-                color: AppColors.primary,
-              ),
-              onTap: () => Navigator.pop(context),
+              trailing: _selectedCategory == null
+                  ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+                  : null,
+              onTap: () {
+                setState(() {
+                  _selectedCategory = null;
+                  _filterActivities();
+                });
+                Navigator.pop(context);
+              },
             ),
-            // ... more filters
+            ...categories.map((cat) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(cat),
+              trailing: _selectedCategory == cat
+                  ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+                  : null,
+              onTap: () {
+                setState(() {
+                  _selectedCategory = cat;
+                  _filterActivities();
+                });
+                Navigator.pop(context);
+              },
+            )),
           ],
         ),
       ),
