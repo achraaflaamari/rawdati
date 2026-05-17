@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'dart:math';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/supabase_config.dart';
