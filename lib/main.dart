@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -23,6 +24,8 @@ void main() async {
     anonKey: SupabaseConfig.anonKey,
     debug: true, // a changer dans la prod
   );
+
+  await initializeDateFormatting('fr_FR', null);
 
   await Permission.notification.request();
 
@@ -65,7 +68,7 @@ class _RawdatiAppState extends State<RawdatiApp> {
 
     try {
       final profile = await _authService.getUserProfile(session.user.id);
-      developer.log('Profile fetched: ${profile?.role}');
+      developer.log('Profile fetched: ${profile?.role}, mustChangePassword: ${profile?.mustChangePassword}');
 
       if (profile == null) {
         await _authService.signOut();
@@ -84,6 +87,7 @@ class _RawdatiAppState extends State<RawdatiApp> {
       }
 
       if (profile.mustChangePassword && profile.role != UserRole.admin) {
+        developer.log('Showing password change screen for user: ${session.user.id}');
         if (mounted) {
           setState(() => _initialScreen = const ChangePasswordScreen());
         }
@@ -106,6 +110,7 @@ class _RawdatiAppState extends State<RawdatiApp> {
         });
       }
     } catch (e) {
+      developer.log('Error in _handleSession: $e');
       // In case of error fetching profile, don't leave user stuck
       if (mounted) setState(() => _initialScreen = const LoginScreen());
     }

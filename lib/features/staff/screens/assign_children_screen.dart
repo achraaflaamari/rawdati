@@ -184,7 +184,27 @@ class _AssignChildrenScreenState extends State<AssignChildrenScreen> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Image.network(photo.photoUrl, fit: BoxFit.cover),
+                        child: Image.network(
+                          photo.photoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                            color: AppColors.textSecondary.withValues(alpha: 0.1),
+                            child: const Icon(
+                              Icons.broken_image_rounded,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: AppColors.textSecondary.withValues(alpha: 0.1),
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                       if (count > 0)
                         Positioned(

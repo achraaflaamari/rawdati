@@ -138,6 +138,28 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                       fit: BoxFit.contain,
                       width: double.infinity,
                       height: 400,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Container(
+                        width: double.infinity,
+                        height: 400,
+                        color: AppColors.textSecondary.withValues(alpha: 0.1),
+                        child: const Icon(
+                          Icons.broken_image_rounded,
+                          size: 64,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: double.infinity,
+                          height: 400,
+                          color: AppColors.textSecondary.withValues(alpha: 0.1),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 24),
                     const Text(
@@ -311,9 +333,11 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
+                        color: AppColors.textSecondary.withValues(alpha: 0.1),
                         image: DecorationImage(
                           image: NetworkImage(photo.photoUrl),
                           fit: BoxFit.cover,
+                          onError: (exception, stackTrace) {},
                         ),
                       ),
                     ),

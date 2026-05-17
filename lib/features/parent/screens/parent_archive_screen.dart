@@ -76,7 +76,9 @@ class _ParentArchiveScreenState extends State<ParentArchiveScreen> {
                   ),
                 ),
                 Expanded(
-                  child: RefreshIndicator(
+                  child: sortedDates.isEmpty
+                      ? _buildEmptyArchive()
+                      : RefreshIndicator(
                     onRefresh: _loadData,
                     child: ListView.builder(
                       padding: const EdgeInsets.all(16),
@@ -144,6 +146,36 @@ class _ParentArchiveScreenState extends State<ParentArchiveScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildEmptyArchive() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.archive_outlined,
+            size: 80,
+            color: AppColors.textSecondary.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Aucune activité archivée',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Les photos des jours précédents apparaîtront ici.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 }

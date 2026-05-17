@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/models/activity.dart';
 import '../../shared/widgets/main_layout.dart';
 import 'photo_viewer_screen.dart';
@@ -46,7 +47,27 @@ class PhotosListScreen extends StatelessWidget {
                 children: [
                   Hero(
                     tag: 'photo_${photo.id}',
-                    child: Image.network(photo.photoUrl, fit: BoxFit.cover),
+                    child: Image.network(
+                      photo.photoUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Container(
+                        color: AppColors.textSecondary.withValues(alpha: 0.1),
+                        child: const Icon(
+                          Icons.broken_image_rounded,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: AppColors.textSecondary.withValues(alpha: 0.1),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   if (photo.reactions.isNotEmpty)
                     Positioned(

@@ -28,9 +28,19 @@ class _ParentFeedScreenState extends State<ParentFeedScreen> {
   Future<void> _loadFeed() async {
     setState(() => _isLoading = true);
     try {
-      final photos = await _parentService.getParentFeed();
+      final allPhotos = await _parentService.getParentFeed();
+      
+      // Filter to show only today's photos
+      final now = DateTime.now();
+      final todayStr = DateFormat('yyyy-MM-dd').format(now);
+      final todayPhotos = allPhotos.where((photo) {
+        if (photo.activityDate == null) return false;
+        final photoDateStr = DateFormat('yyyy-MM-dd').format(photo.activityDate!);
+        return photoDateStr == todayStr;
+      }).toList();
+      
       setState(() {
-        _photos = photos;
+        _photos = todayPhotos;
         _isLoading = false;
       });
     } catch (e) {
@@ -212,6 +222,28 @@ class _ParentFeedScreenState extends State<ParentFeedScreen> {
                       width: double.infinity,
                       height: 250,
                       fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Container(
+                        width: double.infinity,
+                        height: 250,
+                        color: AppColors.textSecondary.withValues(alpha: 0.1),
+                        child: const Icon(
+                          Icons.broken_image_rounded,
+                          size: 48,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: double.infinity,
+                          height: 250,
+                          color: AppColors.textSecondary.withValues(alpha: 0.1),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   _buildReactionSummary(photo),

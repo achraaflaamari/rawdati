@@ -41,6 +41,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       await _authService.updatePassword(_passwordController.text);
       NotificationService.showSnackBar('Mot de passe mis à jour avec succès');
       
+      // Wait a moment to ensure database update is complete
+      await Future.delayed(const Duration(milliseconds: 500));
+      
       if (mounted) {
         // Get the updated profile to know where to navigate
         final user = _authService.currentUser;

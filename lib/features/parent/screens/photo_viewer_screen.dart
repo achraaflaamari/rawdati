@@ -89,9 +89,25 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                   maxScale: 4.0,
                   child: Center(
                     child: Image.network(
-                      widget.photos[index].photoUrl,
-                      fit: BoxFit.contain,
+                    widget.photos[index].photoUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Center(
+                      child: Icon(
+                        Icons.broken_image_rounded,
+                        size: 64,
+                        color: Colors.white54,
+                      ),
                     ),
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      );
+                    },
+                  ),
                   ),
                 ),
               );

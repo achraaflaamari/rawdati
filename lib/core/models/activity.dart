@@ -6,6 +6,7 @@ class Activity {
   final String? category;
   final DateTime activityDate;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   Activity({
     required this.id,
@@ -15,6 +16,7 @@ class Activity {
     this.category,
     required this.activityDate,
     required this.createdAt,
+    this.updatedAt,
   });
 
   factory Activity.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class Activity {
       category: json['category'],
       activityDate: DateTime.parse(json['activity_date']),
       createdAt: DateTime.parse(json['created_at']),
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
     );
   }
 
@@ -37,6 +40,8 @@ class Activity {
       'description': description,
       'category': category,
       'activity_date': activityDate.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
   }
 }
@@ -80,7 +85,7 @@ class ActivityPhoto {
     return ActivityPhoto(
       id: json['photo_id'] ?? json['id'],
       activityId: json['activity_id'],
-      photoUrl: json['photo_url'],
+      photoUrl: json['photo_url'] ?? '',
       activityTitle: json['activity_title'],
       activityDate: json['activity_date'] != null
           ? DateTime.parse(json['activity_date'])

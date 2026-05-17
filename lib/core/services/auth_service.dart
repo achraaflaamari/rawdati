@@ -73,14 +73,22 @@ class AuthService {
   }
 
   Future<void> updatePassword(String newPassword) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('No user logged in');
+
+    // Update password in Supabase Auth
     await _supabase.auth.updateUser(UserAttributes(password: newPassword));
 
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId != null) {
+    // Update the must_change_password flag to false in profiles table
+    // with proper error handling
+    try {
       await _supabase
           .from('profiles')
           .update({'must_change_password': false})
           .eq('id', userId);
+    } catch (e) {
+      developer.log('Error updating must_change_password flag: $e');
+      throw Exception('Failed to update password flag');
     }
   }
 
