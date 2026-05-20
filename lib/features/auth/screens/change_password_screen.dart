@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/user_profile.dart';
@@ -42,14 +43,22 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       NotificationService.showSnackBar('Mot de passe mis à jour avec succès');
       
       // Wait a moment to ensure database update is complete
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 800));
       
       if (mounted) {
-        // Get the updated profile to know where to navigate
+        // Get the updated profile to verify password change was recorded
         final user = _authService.currentUser;
         if (user != null) {
           final profile = await _authService.getUserProfile(user.id);
           if (profile != null && mounted) {
+            // Verify that must_change_password is now false
+            if (profile.mustChangePassword) {
+              developer.log('Warning: must_change_password still true, retrying...');
+              // Retry the update once more
+              await Future.delayed(const Duration(milliseconds: 500));
+              await _authService.updatePassword(_passwordController.text);
+            }
+            
             Widget nextScreen;
             switch (profile.role) {
               case UserRole.admin:
@@ -63,14 +72,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 break;
             }
             
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => nextScreen),
-              (route) => false,
-            );
+            if (mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => nextScreen),
+                (route) => false,
+              );
+            }
           }
         }
       }
     } catch (e) {
+      developer.log('Password update error: $e');
       NotificationService.showSnackBar('Erreur: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);

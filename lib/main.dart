@@ -42,6 +42,7 @@ class RawdatiApp extends StatefulWidget {
 class _RawdatiAppState extends State<RawdatiApp> {
   final AuthService _authService = AuthService();
   Widget? _initialScreen;
+  bool _isHandlingPasswordChange = false;
 
   @override
   void initState() {
@@ -62,6 +63,7 @@ class _RawdatiAppState extends State<RawdatiApp> {
     developer.log('Auth event: $event, session: ${session != null}');
 
     if (session == null) {
+      _isHandlingPasswordChange = false;
       if (mounted) setState(() => _initialScreen = const LoginScreen());
       return;
     }
@@ -72,12 +74,14 @@ class _RawdatiAppState extends State<RawdatiApp> {
 
       if (profile == null) {
         await _authService.signOut();
+        _isHandlingPasswordChange = false;
         if (mounted) setState(() => _initialScreen = const LoginScreen());
         return;
       }
 
       if (profile.isBlocked) {
         await _authService.signOut();
+        _isHandlingPasswordChange = false;
         NotificationService.showSnackBar(
           'Votre compte est bloqué. Veuillez contacter l\'administration.',
           isError: true,
@@ -86,12 +90,20 @@ class _RawdatiAppState extends State<RawdatiApp> {
         return;
       }
 
-      if (profile.mustChangePassword && profile.role != UserRole.admin) {
+      // Only show password change screen if not already handling it and flag is true
+      if (profile.mustChangePassword && profile.role != UserRole.admin && !_isHandlingPasswordChange) {
         developer.log('Showing password change screen for user: ${session.user.id}');
+        _isHandlingPasswordChange = true;
         if (mounted) {
           setState(() => _initialScreen = const ChangePasswordScreen());
         }
         return;
+      }
+
+      // If password change is complete, proceed to main app
+      if (!profile.mustChangePassword && _isHandlingPasswordChange) {
+        _isHandlingPasswordChange = false;
+        developer.log('Password change completed, proceeding to main app');
       }
 
       if (mounted) {
@@ -111,6 +123,7 @@ class _RawdatiAppState extends State<RawdatiApp> {
       }
     } catch (e) {
       developer.log('Error in _handleSession: $e');
+      _isHandlingPasswordChange = false;
       // In case of error fetching profile, don't leave user stuck
       if (mounted) setState(() => _initialScreen = const LoginScreen());
     }
