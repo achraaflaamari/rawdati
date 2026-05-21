@@ -1,5 +1,7 @@
 import 'dart:developer' as developer;
 
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -29,7 +31,12 @@ void main() async {
 
   await Permission.notification.request();
 
-  runApp(const RawdatiApp());
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => const RawdatiApp(),
+    ),
+  );
 }
 
 class RawdatiApp extends StatefulWidget {
@@ -70,7 +77,9 @@ class _RawdatiAppState extends State<RawdatiApp> {
 
     try {
       final profile = await _authService.getUserProfile(session.user.id);
-      developer.log('Profile fetched: ${profile?.role}, mustChangePassword: ${profile?.mustChangePassword}');
+      developer.log(
+        'Profile fetched: ${profile?.role}, mustChangePassword: ${profile?.mustChangePassword}',
+      );
 
       if (profile == null) {
         await _authService.signOut();
@@ -91,8 +100,12 @@ class _RawdatiAppState extends State<RawdatiApp> {
       }
 
       // Only show password change screen if not already handling it and flag is true
-      if (profile.mustChangePassword && profile.role != UserRole.admin && !_isHandlingPasswordChange) {
-        developer.log('Showing password change screen for user: ${session.user.id}');
+      if (profile.mustChangePassword &&
+          profile.role != UserRole.admin &&
+          !_isHandlingPasswordChange) {
+        developer.log(
+          'Showing password change screen for user: ${session.user.id}',
+        );
         _isHandlingPasswordChange = true;
         if (mounted) {
           setState(() => _initialScreen = const ChangePasswordScreen());
@@ -132,6 +145,9 @@ class _RawdatiAppState extends State<RawdatiApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      useInheritedMediaQuery: true,
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       title: 'Rawdati',
       scaffoldMessengerKey: NotificationService.messengerKey,
       debugShowCheckedModeBanner: false,
